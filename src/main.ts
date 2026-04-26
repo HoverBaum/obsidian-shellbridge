@@ -3,9 +3,9 @@ import { openCommandSelect } from "./CommandSelect";
 import {
 	DEFAULT_COMMANDS,
 	DEFAULT_SETTINGS,
+	ShellbridgeCommand,
 	ShellbridgeSettings,
 	ShellbridgeSettingTab,
-	ShellbridgeCommand,
 } from "./settings";
 import { readCommandsFromTaskfile, writeCommandsToTaskfile } from "./taskfile";
 
@@ -17,8 +17,8 @@ export default class ShellbridgePlugin extends Plugin {
 		await this.loadCommandRegistry();
 
 		this.addCommand({
-			id: "select",
-			name: "Select",
+			id: "select-commands",
+			name: "Select Command",
 			callback: () => {
 				openCommandSelect(this);
 			},
@@ -31,7 +31,9 @@ export default class ShellbridgePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const saved = (await this.loadData()) as Partial<ShellbridgeSettings> | null;
+		const saved = (await this.loadData()) as
+			| Partial<ShellbridgeSettings>
+			| null;
 		const safeSaved = saved ?? {};
 		this.settings = {
 			...DEFAULT_SETTINGS,

@@ -11,6 +11,58 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
+	const styles = {
+		root: {
+			display: "flex",
+			flexDirection: "column",
+			gap: "16px",
+		} as const,
+		commandGroup: {
+			borderRadius: "8px",
+			padding: "16px",
+			backgroundColor: "var(--background-secondary)",
+			display: "flex",
+			flexDirection: "column",
+		} as const,
+		commandHeader: {
+			display: "flex",
+			justifyContent: "space-between",
+			alignItems: "center",
+			marginBottom: "16px",
+		} as const,
+		commandTitle: {
+			margin: 0,
+			fontSize: "var(--font-ui-medium)",
+			fontWeight: 600,
+			color: "var(--text-muted)",
+		},
+		fieldRow: {
+			padding: "0 12px",
+		},
+		input: {
+			minWidth: "260px",
+		},
+		monoInput: {
+			fontFamily: "var(--font-monospace)",
+		},
+		buttonRow: {
+			display: "flex",
+			gap: "8px",
+			flexWrap: "wrap",
+			paddingTop: "8px",
+		} as const,
+		message: {
+			margin: "2px 0 0",
+			fontSize: "var(--font-ui-small)",
+			color: "var(--text-muted)",
+		},
+		errorText: {
+			margin: "2px 0 0",
+			color: "var(--text-error)",
+			fontSize: "var(--font-ui-small)",
+		},
+	} as const;
+
 	const validationError = useMemo(() => {
 		const ids = new Set<string>();
 		for (const item of commands) {
@@ -68,52 +120,68 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 	};
 
 	return (
-		<div>
-			<h2>Shellbridge Commands</h2>
-			<p>Commands are saved in vault root at .shellbridge/shellbridge.yml.</p>
-			{commands.map((item, index) => (
-				<div
-					key={`${item.id}-${index}`}
-					style={{
-						border: "1px solid var(--background-modifier-border)",
-						padding: "8px",
-						borderRadius: "6px",
-						marginBottom: "8px",
-					}}
-				>
-					<label>
-						Name
-						<input
-							type="text"
-							value={item.name}
-							onChange={(event) => update(index, { name: event.target.value })}
-							style={{ width: "100%" }}
-						/>
-					</label>
-					<label>
-						ID
-						<input
-							type="text"
-							value={item.id}
-							onChange={(event) => update(index, { id: event.target.value })}
-							style={{ width: "100%" }}
-						/>
-					</label>
-					<label>
-						Command
-						<input
-							type="text"
-							value={item.command}
-							onChange={(event) => update(index, { command: event.target.value })}
-							style={{ width: "100%" }}
-						/>
-					</label>
-					<button type="button" onClick={() => removeRow(index)}>
-						Remove
-					</button>
+		<div style={styles.root}>
+			<div>
+				<div className="setting-item-info">
+					<div className="setting-item-name">Shellbridge commands</div>
+					<div className="setting-item-description">
+						Manage reusable shell actions saved to <code>.shellbridge/shellbridge.yml</code>.
+					</div>
 				</div>
+			</div>
+			{commands.map((item, index) => (
+				<section key={`${item.id}-${index}`} style={styles.commandGroup}>
+					<div style={styles.commandHeader}>
+						<h3 style={styles.commandTitle}>Command {index + 1}</h3>
+						<button className="mod-warning" type="button" onClick={() => removeRow(index)}>
+							Remove
+						</button>
+					</div>
+					<div style={styles.fieldRow}>
+						<div className="setting-item">
+							<div className="setting-item-info">
+								<div className="setting-item-name">Name</div>
+							</div>
+							<div className="setting-item-control">
+								<input
+									type="text"
+									value={item.name}
+									onChange={(event) => update(index, { name: event.target.value })}
+									style={styles.input}
+								/>
+							</div>
+						</div>
+						<div className="setting-item">
+							<div className="setting-item-info">
+								<div className="setting-item-name">ID</div>
+								<div className="setting-item-description">Unique command identifier</div>
+							</div>
+							<div className="setting-item-control">
+								<input
+									type="text"
+									value={item.id}
+									onChange={(event) => update(index, { id: event.target.value })}
+									style={{ ...styles.input, ...styles.monoInput }}
+								/>
+							</div>
+						</div>
+						<div className="setting-item">
+							<div className="setting-item-info">
+								<div className="setting-item-name">Command</div>
+							</div>
+							<div className="setting-item-control">
+								<input
+									type="text"
+									value={item.command}
+									onChange={(event) => update(index, { command: event.target.value })}
+									style={{ ...styles.input, ...styles.monoInput }}
+								/>
+							</div>
+						</div>
+					</div>
+				</section>
 			))}
-			<div style={{ display: "flex", gap: "8px" }}>
+			<div style={styles.buttonRow}>
 				<button type="button" onClick={addRow}>
 					Add command
 				</button>
@@ -127,8 +195,9 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 					{isSaving ? "Saving..." : "Save"}
 				</button>
 			</div>
-			{validationError ? <p style={{ color: "var(--text-error)" }}>{validationError}</p> : null}
-			{error ? <p style={{ color: "var(--text-error)" }}>{error}</p> : null}
+			<p style={styles.message}>Tip: command IDs should stay stable once used in notes or workflows.</p>
+			{validationError ? <p style={styles.errorText}>{validationError}</p> : null}
+			{error ? <p style={styles.errorText}>{error}</p> : null}
 		</div>
 	);
 }
