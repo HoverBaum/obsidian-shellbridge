@@ -13,16 +13,14 @@ import { NoticeContent } from "./NoticeContent";
 import {
 	DEFAULT_COMMANDS,
 	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	ShellbridgeSettings,
+	ShellbridgeSettingTab,
 	ShellbridgeCommand,
 } from "./settings";
 import { readCommandsFromTaskfile, writeCommandsToTaskfile } from "./taskfile";
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class ShellbridgePlugin extends Plugin {
+	settings: ShellbridgeSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -40,7 +38,7 @@ export default class MyPlugin extends Plugin {
 			root.render(
 				React.createElement(NoticeContent, {
 					onPrint: () => {
-						console.log("Notice button pressed");
+						console.debug("Notice button pressed");
 					},
 				}),
 			);
@@ -56,7 +54,7 @@ export default class MyPlugin extends Plugin {
 			id: "open-modal-simple",
 			name: "Open modal (simple)",
 			callback: () => {
-				new SampleModal(this.app).open();
+				new ShellbridgeModal(this.app).open();
 			},
 		});
 		this.addCommand({
@@ -87,7 +85,7 @@ export default class MyPlugin extends Plugin {
 					// If checking is true, we're simply "checking" if the command can be run.
 					// If checking is false, then we want to actually perform the operation.
 					if (!checking) {
-						new SampleModal(this.app).open();
+						new ShellbridgeModal(this.app).open();
 					}
 
 					// This command will only show up in Command Palette when the check function returns true
@@ -98,7 +96,7 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new ShellbridgeSettingTab(this.app, this));
 
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
@@ -106,17 +104,13 @@ export default class MyPlugin extends Plugin {
 		// 	new Notice("Click");
 		// });
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000),
-		);
 	}
 
 	onunload() {
 	}
 
 	async loadSettings() {
-		const saved = (await this.loadData()) as Partial<MyPluginSettings> | null;
+		const saved = (await this.loadData()) as Partial<ShellbridgeSettings> | null;
 		const safeSaved = saved ?? {};
 		this.settings = {
 			...DEFAULT_SETTINGS,
@@ -157,7 +151,7 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
+class ShellbridgeModal extends Modal {
 	constructor(app: App) {
 		super(app);
 	}

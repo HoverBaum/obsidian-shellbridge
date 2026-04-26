@@ -1,5 +1,5 @@
 import { App, FuzzySuggestModal, Notice } from "obsidian";
-import MyPlugin from "./main";
+import ShellbridgePlugin from "./main";
 import { ShellbridgeCommand } from "./settings";
 
 type ExecFunction = (
@@ -77,9 +77,9 @@ function runCommand(app: App, command: ShellbridgeCommand): void {
 }
 
 class CommandSelectModal extends FuzzySuggestModal<ShellbridgeCommand> {
-	private readonly plugin: MyPlugin;
+	private readonly plugin: ShellbridgePlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: ShellbridgePlugin) {
 		super(app);
 		this.plugin = plugin;
 	}
@@ -97,6 +97,6 @@ class CommandSelectModal extends FuzzySuggestModal<ShellbridgeCommand> {
 	}
 }
 
-export function openCommandSelect(plugin: MyPlugin): void {
+export function openCommandSelect(plugin: ShellbridgePlugin): void {
 	new CommandSelectModal(plugin.app, plugin).open();
 }

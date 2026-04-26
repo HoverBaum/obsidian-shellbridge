@@ -1,6 +1,6 @@
 import { App, PluginSettingTab } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
-import MyPlugin from "./main";
+import ShellbridgePlugin from "./main";
 import React from "react";
 import { CommandSettingsView } from "./SettingsView";
 
@@ -10,7 +10,7 @@ export type ShellbridgeCommand = {
 	command: string;
 };
 
-export interface MyPluginSettings {
+export interface ShellbridgeSettings {
 	commands: ShellbridgeCommand[];
 }
 
@@ -19,15 +19,15 @@ export const DEFAULT_COMMANDS: ShellbridgeCommand[] = [
 	{ id: "print-working-directory", name: "Print working directory", command: "pwd" },
 ];
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: ShellbridgeSettings = {
 	commands: DEFAULT_COMMANDS,
 };
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class ShellbridgeSettingTab extends PluginSettingTab {
+	plugin: ShellbridgePlugin;
 	root: Root | null = null;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: ShellbridgePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
