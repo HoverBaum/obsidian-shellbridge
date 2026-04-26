@@ -54,9 +54,14 @@ function showCommandFinishedNotice(command: ShellbridgeCommand, output: string):
 	new Notice(noticeFragment, 7000);
 }
 
+function showCommandStartedNotice(command: ShellbridgeCommand): void {
+	new Notice(`Command started: ${command.name}`, 2500);
+}
+
 function runCommand(app: App, command: ShellbridgeCommand): void {
 	const exec = getExec();
 	console.debug("Running shellbridge command:", command.command);
+	showCommandStartedNotice(command);
 
 	exec(
 		command.command,
