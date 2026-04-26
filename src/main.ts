@@ -11,10 +11,13 @@ import { createRoot } from "react-dom/client";
 import { openCommandSelect } from "./CommandSelect";
 import { NoticeContent } from "./NoticeContent";
 import {
+	DEFAULT_COMMANDS,
 	DEFAULT_SETTINGS,
 	MyPluginSettings,
 	SampleSettingTab,
+	ShellbridgeCommand,
 } from "./settings";
+import { readCommandsFromTaskfile, writeCommandsToTaskfile } from "./taskfile";
 
 // Remember to rename these classes and interfaces!
 
@@ -23,6 +26,7 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		await this.loadCommandRegistry();
 
 		// This creates an icon in the left ribbon.
 		this.addRibbonIcon("dice", "Sample", (evt: MouseEvent) => {
@@ -59,7 +63,7 @@ export default class MyPlugin extends Plugin {
 			id: "select",
 			name: "Select",
 			callback: () => {
-				openCommandSelect(this.app);
+				openCommandSelect(this);
 			},
 		});
 		// This adds an editor command that can perform some operation on the current editor instance
@@ -112,15 +116,44 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData() as Partial<MyPluginSettings>,
-		);
+		const saved = (await this.loadData()) as Partial<MyPluginSettings> | null;
+		const safeSaved = saved ?? {};
+		this.settings = {
+			...DEFAULT_SETTINGS,
+			...safeSaved,
+			commands: safeSaved.commands?.length
+				? safeSaved.commands
+				: DEFAULT_SETTINGS.commands.map((command) => ({ ...command })),
+		};
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	async loadCommandRegistry(): Promise<void> {
+		const fromTaskfile = await readCommandsFromTaskfile(this.app);
+		if (fromTaskfile) {
+			this.settings.commands = fromTaskfile;
+			await this.saveSettings();
+			return;
+		}
+
+		if (!this.settings.commands?.length) {
+			this.settings.commands = DEFAULT_COMMANDS;
+			await writeCommandsToTaskfile(this.app, this.settings.commands);
+			await this.saveSettings();
+		}
+	}
+
+	async updateCommands(commands: ShellbridgeCommand[]): Promise<void> {
+		this.settings.commands = commands;
+		await writeCommandsToTaskfile(this.app, commands);
+		await this.saveSettings();
+	}
+
+	getCommands(): ShellbridgeCommand[] {
+		return this.settings.commands;
 	}
 }
 

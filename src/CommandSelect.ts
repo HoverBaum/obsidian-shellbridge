@@ -1,9 +1,29 @@
 import { App, FuzzySuggestModal, Notice } from "obsidian";
-import { exec } from "child_process";
+import MyPlugin from "./main";
+import { ShellbridgeCommand } from "./settings";
 
-type AllowedCommand = "ls" | "ls -a" | "cat Welcome.md";
+type ExecFunction = (
+	command: string,
+	options: { cwd?: string; shell?: string | boolean },
+	callback: (error: Error | null, stdout: string, stderr: string) => void,
+) => void;
 
-const COMMANDS: AllowedCommand[] = ["ls", "ls -a", "cat Welcome.md"];
+function getExec(): ExecFunction {
+	const nodeRequire = (window as Window & { require?: (name: string) => unknown }).require;
+	if (!nodeRequire) {
+		throw new Error("Node require is unavailable.");
+	}
+	const childProcess = nodeRequire("child_process") as { exec?: ExecFunction };
+	if (!childProcess.exec) {
+		throw new Error("child_process.exec is unavailable.");
+	}
+	return childProcess.exec;
+}
+
+function getDefaultShell(): string | boolean {
+	const runtime = globalThis as { process?: { env?: Record<string, string | undefined> } };
+	return runtime.process?.env?.SHELL ?? true;
+}
 
 function getCommandCwd(app: App): string | undefined {
 	const adapter = app.vault.adapter as { getBasePath?: () => string };
@@ -14,19 +34,19 @@ function getCommandCwd(app: App): string | undefined {
 	return undefined;
 }
 
-function showCommandFinishedNotice(command: AllowedCommand, output: string): void {
+function showCommandFinishedNotice(command: ShellbridgeCommand, output: string): void {
 	const noticeWrapper = document.createElement("div");
 	const label = noticeWrapper.createEl("span", {
-		text: `Command finished: ${command}`,
+		text: `Command finished: ${command.name}`,
 	});
-	label.style.marginRight = "0.5em";
+	label.addClass("shellbridge-command-label");
 
 	const button = noticeWrapper.createEl("button", {
 		text: "Log output",
 	});
 	button.type = "button";
 	button.addEventListener("click", () => {
-		console.log(output);
+		console.warn(output);
 	});
 
 	const noticeFragment = document.createDocumentFragment();
@@ -34,12 +54,13 @@ function showCommandFinishedNotice(command: AllowedCommand, output: string): voi
 	new Notice(noticeFragment, 7000);
 }
 
-function runCommand(app: App, command: AllowedCommand): void {
-	console.log(command);
+function runCommand(app: App, command: ShellbridgeCommand): void {
+	const exec = getExec();
+	console.debug("Running shellbridge command:", command.command);
 
 	exec(
-		command,
-		{ cwd: getCommandCwd(app) },
+		command.command,
+		{ cwd: getCommandCwd(app), shell: getDefaultShell() },
 		(error, stdout, stderr) => {
 			const output = error
 				? `Command failed: ${error.message}\n${stderr}`.trim()
@@ -50,24 +71,27 @@ function runCommand(app: App, command: AllowedCommand): void {
 	);
 }
 
-class CommandSelectModal extends FuzzySuggestModal<AllowedCommand> {
-	constructor(app: App) {
+class CommandSelectModal extends FuzzySuggestModal<ShellbridgeCommand> {
+	private readonly plugin: MyPlugin;
+
+	constructor(app: App, plugin: MyPlugin) {
 		super(app);
+		this.plugin = plugin;
 	}
 
-	getItems(): AllowedCommand[] {
-		return COMMANDS;
+	getItems(): ShellbridgeCommand[] {
+		return this.plugin.getCommands();
 	}
 
-	getItemText(item: AllowedCommand): string {
-		return item;
+	getItemText(item: ShellbridgeCommand): string {
+		return `${item.name} (${item.id})`;
 	}
 
-	onChooseItem(item: AllowedCommand): void {
+	onChooseItem(item: ShellbridgeCommand): void {
 		runCommand(this.app, item);
 	}
 }
 
-export function openCommandSelect(app: App): void {
-	new CommandSelectModal(app).open();
+export function openCommandSelect(plugin: MyPlugin): void {
+	new CommandSelectModal(plugin.app, plugin).open();
 }
