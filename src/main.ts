@@ -1,7 +1,6 @@
 import {
 	App,
 	Editor,
-	FuzzySuggestModal,
 	MarkdownView,
 	Modal,
 	Notice,
@@ -9,6 +8,7 @@ import {
 } from "obsidian";
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { openCommandSelect } from "./CommandSelect";
 import { NoticeContent } from "./NoticeContent";
 import {
 	DEFAULT_SETTINGS,
@@ -59,7 +59,7 @@ export default class MyPlugin extends Plugin {
 			id: "select",
 			name: "Select",
 			callback: () => {
-				new BookTitleSuggestModal(this.app).open();
+				openCommandSelect(this.app);
 			},
 		});
 		// This adds an editor command that can perform some operation on the current editor instance
@@ -137,27 +137,5 @@ class SampleModal extends Modal {
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
-	}
-}
-
-class BookTitleSuggestModal extends FuzzySuggestModal<string> {
-	private readonly titles: string[] = [
-		"The Hobbit",
-		"Dune",
-		"Neuromancer",
-		"Pride and Prejudice",
-		"The Left Hand of Darkness",
-	];
-
-	getItems(): string[] {
-		return this.titles;
-	}
-
-	getItemText(item: string): string {
-		return item;
-	}
-
-	onChooseItem(item: string): void {
-		console.log(item);
 	}
 }
