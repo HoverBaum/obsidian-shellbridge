@@ -9,7 +9,6 @@ type SettingsViewProps = {
 export function CommandSettingsView({ initialCommands, onSave }: SettingsViewProps) {
 	const [commands, setCommands] = useState<ShellbridgeCommand[]>(initialCommands);
 	const [error, setError] = useState<string | null>(null);
-	const [isSaving, setIsSaving] = useState(false);
 	const hasMountedRef = useRef(false);
 	const saveCounterRef = useRef(0);
 
@@ -98,7 +97,7 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 
 		const saveId = saveCounterRef.current + 1;
 		saveCounterRef.current = saveId;
-		setIsSaving(true);
+		
 		setError(null);
 
 		void onSave(normalizedCommands)
@@ -106,11 +105,6 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 				const message = saveError instanceof Error ? saveError.message : "Failed to save commands.";
 				setError(message);
 			})
-			.finally(() => {
-				if (saveCounterRef.current === saveId) {
-					setIsSaving(false);
-				}
-			});
 	}, [commands, onSave]);
 
 	return (
