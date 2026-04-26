@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ShellbridgeCommand } from "./settings";
 
 type SettingsViewProps = {
@@ -10,6 +10,8 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 	const [commands, setCommands] = useState<ShellbridgeCommand[]>(initialCommands);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	const hasMountedRef = useRef(false);
+	const saveCounterRef = useRef(0);
 
 	const styles = {
 		root: {
@@ -63,20 +65,6 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 		},
 	} as const;
 
-	const validationError = useMemo(() => {
-		const ids = new Set<string>();
-		for (const item of commands) {
-			if (!item.id.trim() || !item.name.trim() || !item.command.trim()) {
-				return "All command fields are required.";
-			}
-			if (ids.has(item.id.trim())) {
-				return `Duplicate id: ${item.id.trim()}`;
-			}
-			ids.add(item.id.trim());
-		}
-		return null;
-	}, [commands]);
-
 	const update = (index: number, patch: Partial<ShellbridgeCommand>) => {
 		setCommands((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
 	};
@@ -96,28 +84,34 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 		setCommands((prev) => prev.filter((_, i) => i !== index));
 	};
 
-	const save = async () => {
-		if (validationError) {
-			setError(validationError);
+	useEffect(() => {
+		if (!hasMountedRef.current) {
+			hasMountedRef.current = true;
 			return;
 		}
+
+		const normalizedCommands = commands.map((item) => ({
+			id: item.id.trim(),
+			name: item.name.trim(),
+			command: item.command.trim(),
+		}));
+
+		const saveId = saveCounterRef.current + 1;
+		saveCounterRef.current = saveId;
 		setIsSaving(true);
 		setError(null);
-		try {
-			await onSave(
-				commands.map((item) => ({
-					id: item.id.trim(),
-					name: item.name.trim(),
-					command: item.command.trim(),
-				})),
-			);
-		} catch (saveError) {
-			const message = saveError instanceof Error ? saveError.message : "Failed to save commands.";
-			setError(message);
-		} finally {
-			setIsSaving(false);
-		}
-	};
+
+		void onSave(normalizedCommands)
+			.catch((saveError) => {
+				const message = saveError instanceof Error ? saveError.message : "Failed to save commands.";
+				setError(message);
+			})
+			.finally(() => {
+				if (saveCounterRef.current === saveId) {
+					setIsSaving(false);
+				}
+			});
+	}, [commands, onSave]);
 
 	return (
 		<div style={styles.root}>
@@ -185,18 +179,7 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 				<button type="button" onClick={addRow}>
 					Add command
 				</button>
-				<button
-					type="button"
-					disabled={isSaving}
-					onClick={() => {
-						void save();
-					}}
-				>
-					{isSaving ? "Saving..." : "Save"}
-				</button>
 			</div>
-			<p style={styles.message}>Tip: command IDs should stay stable once used in notes or workflows.</p>
-			{validationError ? <p style={styles.errorText}>{validationError}</p> : null}
 			{error ? <p style={styles.errorText}>{error}</p> : null}
 		</div>
 	);
