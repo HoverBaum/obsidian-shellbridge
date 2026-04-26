@@ -118,7 +118,7 @@ export function CommandSettingsView({ initialCommands, onSave }: SettingsViewPro
 				</div>
 			</div>
 			{commands.map((item, index) => (
-				<section key={`${item.id}-${index}`} style={styles.commandGroup}>
+				<section key={index} style={styles.commandGroup}>
 					<div style={styles.commandHeader}>
 						<h3 style={styles.commandTitle}>Command {index + 1}</h3>
 						<button className="mod-warning" type="button" onClick={() => removeRow(index)}>
