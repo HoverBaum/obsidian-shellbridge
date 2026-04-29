@@ -1,40 +1,13 @@
 import { App, FuzzySuggestModal, Notice } from "obsidian";
+import path from "path";
+import { exec, execSync } from "child_process";
 import ShellbridgePlugin from "./main";
 import { ShellbridgeCommand } from "./settings";
 
-type ExecFunction = (
-	command: string,
-	options: { cwd?: string; shell?: string | boolean },
-	callback: (error: Error | null, stdout: string, stderr: string) => void,
-) => void;
-
-function getExec(): ExecFunction {
-	const nodeRequire = (window as Window & { require?: (name: string) => unknown }).require;
-	if (!nodeRequire) {
-		throw new Error("Node require is unavailable.");
-	}
-	const childProcess = nodeRequire("child_process") as { exec?: ExecFunction };
-	if (!childProcess.exec) {
-		throw new Error("child_process.exec is unavailable.");
-	}
-	return childProcess.exec;
-}
-
-function getDefaultShell(): string | boolean {
-	const runtime = globalThis as { process?: { env?: Record<string, string | undefined> } };
-	return runtime.process?.env?.SHELL ?? true;
-}
-
-function getCommandCwd(app: App): string | undefined {
-	const adapter = app.vault.adapter as { getBasePath?: () => string };
-	if (typeof adapter.getBasePath === "function") {
-		return adapter.getBasePath();
-	}
-
-	return undefined;
-}
-
-function showCommandFinishedNotice(command: ShellbridgeCommand, output: string): void {
+function showCommandFinishedNotice(
+	command: ShellbridgeCommand,
+	output: string,
+): void {
 	const noticeWrapper = document.createElement("div");
 	const label = noticeWrapper.createEl("span", {
 		text: `Command finished: ${command.name}`,
@@ -59,17 +32,35 @@ function showCommandStartedNotice(command: ShellbridgeCommand): void {
 }
 
 function runCommand(app: App, command: ShellbridgeCommand): void {
-	const exec = getExec();
 	console.debug("Running shellbridge command:", command.command);
 	showCommandStartedNotice(command);
+	const currentFilePath = app.workspace.getActiveFile()?.path;
+	// @ts-ignore
+	const basePath: string = app.vault.adapter.basePath || "";
+	const absoluteCurrentFilePath = currentFilePath
+		? path.join(basePath, currentFilePath)
+		: "";
 
+	console.debug(`OSB running: ${command.command}`);
 	exec(
 		command.command,
-		{ cwd: getCommandCwd(app), shell: getDefaultShell() },
+		{
+			cwd: basePath,
+			env: {
+				...process.env,
+				PATH: process.env.PATH,
+				OSB_CURRENT_FILE_PATH: absoluteCurrentFilePath,
+			},
+		},
 		(error, stdout, stderr) => {
+			console.debug(`OSB finished: ${command.command}`);
+			console.debug(`OSB error: ${error}`);
+			console.debug(`OSB stdout: ${stdout}`);
+			console.debug(`OSB stderr: ${stderr}`);
 			const output = error
 				? `Command failed: ${error.message}\n${stderr}`.trim()
-				: [stdout, stderr].filter(Boolean).join("\n").trim() || "(no output)";
+				: [stdout, stderr].filter(Boolean).join("\n").trim() ||
+					"(no output)";
 
 			showCommandFinishedNotice(command, output);
 		},
