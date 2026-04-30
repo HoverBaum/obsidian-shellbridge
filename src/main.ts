@@ -8,11 +8,13 @@ import {
 	ShellbridgeSettingTab,
 } from "./settings";
 import { readCommandsFromTaskfile, writeCommandsToTaskfile } from "./taskfile";
+import { initShellEnvironment } from "./shell-env";
 
 export default class ShellbridgePlugin extends Plugin {
 	settings: ShellbridgeSettings;
 
 	async onload() {
+		await initShellEnvironment();
 		await this.loadSettings();
 		await this.loadCommandRegistry();
 
