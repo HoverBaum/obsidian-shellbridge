@@ -86,10 +86,11 @@ function runCommand(app: App, command: ShellbridgeCommand): void {
 		? path.join(basePath, currentFilePath)
 		: "";
 	const outputChunks: string[] = [];
-	let processExited = false;
+	let isSettled = false;
 	let stopRequested = false;
 	let timeoutTriggered = false;
 	let forceKillTimer: NodeJS.Timeout | undefined;
+	let childProcess: ChildProcess | null = null;
 
 	const addOutput = (label: "stdout" | "stderr", chunk: Buffer): void => {
 		outputChunks.push(`[${label}] ${chunk.toString("utf8")}`);
@@ -101,18 +102,23 @@ function runCommand(app: App, command: ShellbridgeCommand): void {
 		return truncateOutput(safeOutput);
 	};
 
-	let childProcess: ChildProcess | null = null;
+	const sendSignal = (signal: NodeJS.Signals): void => {
+		if (!childProcess || childProcess.killed) {
+			return;
+		}
+		childProcess.kill(signal);
+	};
 
 	const runningNotice = createRunningNotice(command, () => {
 		stopRequested = true;
-		childProcess?.kill("SIGTERM");
+		sendSignal("SIGTERM");
 	});
 
 	const timeoutTimer = window.setTimeout(() => {
 		timeoutTriggered = true;
-		childProcess?.kill("SIGTERM");
+		sendSignal("SIGTERM");
 		forceKillTimer = setTimeout(() => {
-			childProcess?.kill("SIGKILL");
+			sendSignal("SIGKILL");
 		}, KILL_GRACE_MS);
 	}, COMMAND_TIMEOUT_MS);
 
@@ -121,6 +127,19 @@ function runCommand(app: App, command: ShellbridgeCommand): void {
 		if (forceKillTimer) {
 			clearTimeout(forceKillTimer);
 		}
+	};
+
+	const finish = (status: CommandResultStatus, extraOutput?: string): void => {
+		if (isSettled) {
+			return;
+		}
+		isSettled = true;
+		if (extraOutput) {
+			outputChunks.push(extraOutput);
+		}
+		clearTimers();
+		runningNotice.hide();
+		showCommandResultNotice(command, status, getOutput());
 	};
 
 	childProcess = spawn(command.command, {
@@ -137,49 +156,34 @@ function runCommand(app: App, command: ShellbridgeCommand): void {
 	childProcess.stderr?.on("data", (chunk: Buffer) => addOutput("stderr", chunk));
 
 	childProcess.on("error", (error: Error) => {
-		if (processExited) {
-			return;
-		}
-		processExited = true;
-		clearTimers();
-		runningNotice.hide();
-		outputChunks.push(`[stderr] Failed to start command: ${error.message}\n`);
-		showCommandResultNotice(command, "failed", getOutput());
+		finish("failed", `[stderr] Failed to start command: ${error.message}\n`);
 	});
 
 	childProcess.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
-		if (processExited) {
-			return;
-		}
-		processExited = true;
-		clearTimers();
-		runningNotice.hide();
-
 		if (timeoutTriggered) {
-			outputChunks.push(
+			finish(
+				"timed out",
 				`[stderr] Command timed out after ${Math.round(COMMAND_TIMEOUT_MS / 1000)} seconds.\n`,
 			);
-			showCommandResultNotice(command, "timed out", getOutput());
 			return;
 		}
 
 		if (stopRequested) {
-			outputChunks.push("[stderr] Command stopped by user.\n");
-			showCommandResultNotice(command, "cancelled", getOutput());
+			finish("cancelled", "[stderr] Command stopped by user.\n");
 			return;
 		}
 
 		if (code === 0) {
-			showCommandResultNotice(command, "finished", getOutput());
+			finish("finished");
 			return;
 		}
 
-		outputChunks.push(
+		finish(
+			"failed",
 			`[stderr] Command exited with code ${String(code)}${
 				signal ? ` (signal: ${signal})` : ""
 			}.\n`,
 		);
-		showCommandResultNotice(command, "failed", getOutput());
 	});
 }
 
